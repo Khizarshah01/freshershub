@@ -45,6 +45,10 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "EXPO_PUBLIC_SUPABASE_URL": "https://mjkobcpumawilvxnxdtw.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qa29iY3B1bWF3aWx2eG54ZHR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3NTU1NDUsImV4cCI6MjA4MDMzMTU0NX0.XaQ_hOCgHOPY3zBgfPy1vDwb3zx6VW6bI6U70WQjTtg"
+        }
   }
 }

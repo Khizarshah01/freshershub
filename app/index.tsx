@@ -1,8 +1,11 @@
-import { Link, type Href } from "expo-router";
+import { Link, useRouter, type Href } from "expo-router";
 import idea from "../assets/images/idea.png";
 import rightArrow from "../assets/images/right-arrow.png";
 import test from "../assets/images/test.png";
 // 1. Added 'Image' to the imports below
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/provider/AuthProvider";
+import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -14,70 +17,79 @@ type Pack = {
   subjectsCount: number;
   subtitle: string;
   price: string;
-  type: "pyq" | "answers";
+  type: "pyq" | "model";
   color: string;
   tag?: string; // For "Trending" or "High Demand"
 };
 
+function getColor(branch: string) {
+  switch (branch) {
+    case "Computer Science":
+      return "bg-indigo-100 text-indigo-700";
+    case "Mechanical Engineering":
+      return "bg-orange-100 text-orange-700";
+    case "Civil Engineering":
+      return "bg-emerald-100 text-emerald-700";
+    case "Information Technology":
+      return "bg-teal-100 text-teal-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
 export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const [explorePacks, setExplorePacks] = useState<Pack[]>([]);
+const [loadingPacks, setLoadingPacks] = useState(true);
+
+useEffect(() => {
+  fetchPacks();
+}, []);
+
+async function fetchPacks() {
+  const { data, error } = await supabase
+    .from("packs")
+    .select("*");
+
+  if (error) {
+    console.log("PACKS FETCH ERROR:", error);
+    return;
+  }
+  
+  if (!data) {
+    setExplorePacks([]);
+    setLoadingPacks(false);
+    return;
+  }
+  
+
+  // Convert database rows to UI pack format
+  const formatted = data.map((p) => ({
+    id: p.id,
+    title: p.title,
+    branch: p.branch,
+    subjectsCount: p.subjects_count,
+    subtitle: p.subtitle,
+    price: `₹${p.price}`,
+    type: p.type,
+    color: getColor(p.branch), // dynamically assign UI color
+  }));
+
+  setExplorePacks(formatted);
+  setLoadingPacks(false);
+}
+
+  // If not logged in, send user to login screen
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/auth/login");
+    }
+  }, [loading, user, router]);
+
   // Mock Data: My Library (Empty for now)
   const myLibrary: Pack[] = []; 
   
-  // Mock Data: Marketplace / Explore Section
-  const explorePacks: Pack[] = [
-    {
-      id: "CSE_3_SEM",
-      title: "CSE 3rd Sem",
-      branch: "Computer Science",
-      subjectsCount: 5,
-      subtitle: "DSA, DCN, M3, OS, EVS",
-      price: "₹19",
-      type: "pyq",
-      color: "bg-indigo-100 text-indigo-700",
-      tag: "POPULAR",
-    },
-    {
-      id: "CSE_5_SEM",
-      title: "CSE 5th Sem",
-      branch: "Computer Science",
-      subjectsCount: 6,
-      subtitle: "DBMS, TOC, SE, CN, Elective",
-      price: "₹19",
-      type: "pyq",
-      color: "bg-indigo-100 text-indigo-700",
-    },
-    {
-      id: "CSE_5_SEM_SOL",
-      title: "CSE 5th Sem (Solutions)",
-      branch: "Computer Science",
-      subjectsCount: 6,
-      subtitle: "Verified Model Answers",
-      price: "₹49",
-      type: "answers",
-      color: "bg-teal-100 text-teal-700",
-    },
-    {
-      id: "MECH_3_SEM",
-      title: "Mech 3rd Sem",
-      branch: "Mechanical Engg",
-      subjectsCount: 5,
-      subtitle: "Thermo, TOM, FM, M3",
-      price: "₹19",
-      type: "pyq",
-      color: "bg-orange-100 text-orange-700",
-    },
-    {
-      id: "CIVIL_5_SEM",
-      title: "Civil 5th Sem",
-      branch: "Civil Engg",
-      subjectsCount: 6,
-      subtitle: "Struct. Analysis, Concrete",
-      price: "₹19",
-      type: "pyq",
-      color: "bg-emerald-100 text-emerald-700",
-    },
-  ];
-
   return (
     <SafeAreaView className="flex-1 bg-[#F8F9FC]">
       <ScrollView showsVerticalScrollIndicator={false} className="p-5">
