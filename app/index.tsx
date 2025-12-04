@@ -56,7 +56,6 @@ async function fetchPacks() {
     console.log("PACKS FETCH ERROR:", error);
     return;
   }
-  
   if (!data) {
     setExplorePacks([]);
     setLoadingPacks(false);

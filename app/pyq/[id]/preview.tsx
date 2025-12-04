@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonAccordion, SkeletonHeader } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { Link, Stack, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
@@ -20,11 +21,39 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+type Pack = {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  type: string;
+  branch: string | null;
+  subjects_count: number | null;
+  subtitle: string | null;
+};
+
+type Subject = {
+  id: string;
+  pack_id: string;
+  title: string;
+  order_idx: number;
+  sessions?: Session[];
+};
+
+type Session = {
+  id: number;
+  subject_id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  created_at: string;
+};
+
 export default function Preview() {
   const { id } = useLocalSearchParams();
 
-  const [pack, setPack] = useState<any>(null);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [pack, setPack] = useState<Pack | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dummy syllabus (add DB later)
@@ -34,60 +63,76 @@ export default function Preview() {
   ];
 
   useEffect(() => {
-    fetchPackData();
+    if (id) {
+      fetchPackData();
+    }
   }, [id]);
 
   async function fetchPackData() {
     setLoading(true);
-
-    // 1️⃣ Fetch pack
-    const { data: packData, error: packErr } = await supabase
-      .from("packs")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (packErr) {
-      console.log("PACK ERROR:", packErr);
+  
+    try {
+      // 1️⃣ Fetch pack
+      const { data: packData, error: packError } = await supabase
+        .from("packs")
+        .select("*")
+        .eq("id", id)
+        .single();
+  
+      if (packError) {
+        console.error("Error fetching pack:", packError);
+        return;
+      }
+  
+      setPack(packData);
+  
+      // 2️⃣ Fetch subjects for this pack
+      const { data: subjectsData, error: subjectsError } = await supabase
+        .from("subjects")
+        .select("*")
+        .eq("pack_id", id)
+        .order("order_idx", { ascending: true });
+  
+      if (subjectsError) {
+        console.error("Error fetching subjects:", subjectsError);
+        setSubjects([]);
+        setLoading(false);
+        return;
+      }
+  
+      if (!subjectsData || subjectsData.length === 0) {
+        setSubjects([]);
+        setLoading(false);
+        return;
+      }
+  
+      // 3️⃣ Fetch sessions for these subjects
+      const subjectIds = subjectsData.map((sub: Subject) => sub.id);
+  
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("sessions")
+        .select("*")
+        .in("subject_id", subjectIds);
+  
+      if (sessionsError) {
+        console.error("Error fetching sessions:", sessionsError);
+      }
+  
+      // 4️⃣ Attach sessions to subjects
+      const subjectsWithSessions = subjectsData.map((subject: Subject) => ({
+        ...subject,
+        sessions: sessionsData?.filter((session: Session) => 
+          session.subject_id === subject.id
+        ) || []
+      }));
+  
+      setSubjects(subjectsWithSessions);
+      
+    } catch (error) {
+      console.error("Unexpected error in fetchPackData:", error);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setPack(packData);
-
-    // 2️⃣ Fetch subjects
-    const { data: subjectsData, error: subjectsErr } = await supabase
-      .from("subjects")
-      .select("*")
-      .eq("pack_id", id)
-      .order("order_idx", { ascending: true });
-
-    if (subjectsErr) console.log("SUBJECTS ERROR:", subjectsErr);
-
-    // No subjects → done
-    if (!subjectsData || subjectsData.length === 0) {
-      setSubjects([]);
-      setLoading(false);
-      return;
-    }
-
-    // 3️⃣ Fetch sessions for these subjects
-    const { data: sessionsData } = await supabase
-      .from("sessions")
-      .select("id, subject_id, slug, title, summary, has_diagrams")
-      .in(
-        "subject_id",
-        subjectsData.map((s) => s.id)
-      );
-
-    // 4️⃣ Attach sessions to each subject
-    const subjectsWithSessions = subjectsData.map((sub) => ({
-      ...sub,
-      sessions: sessionsData?.filter((ses) => ses.subject_id === sub.id) || [],
-    }));
-
-    setSubjects(subjectsWithSessions);
-    setLoading(false);
   }
 
   // Accordion state
@@ -102,7 +147,92 @@ export default function Preview() {
     );
   };
 
-  if (loading || !pack) return null;
+  // Skeleton Loading Screen
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: "Loading...",
+            headerTintColor: "#000",
+            headerStyle: { backgroundColor: "#F8F9FC" },
+            headerShadowVisible: false,
+            headerTitleStyle: { fontWeight: "800", fontSize: 18 },
+          }}
+        />
+        
+        <SafeAreaView className="flex-1 bg-[#F8F9FC]" edges={["bottom"]}>
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: 120 }}
+            className="p-5 pt-0"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header Skeleton */}
+            <SkeletonHeader />
+
+            {/* Free Access Section Skeleton */}
+            <View className="mb-6">
+              <Skeleton width={120} height={20} borderRadius={6} className="mb-3" />
+              <View className="bg-white p-1 rounded-2xl border border-blue-100 shadow-sm">
+                {[1, 2].map((i) => (
+                  <View key={i} className="flex-row items-center p-4 bg-blue-50/50 rounded-xl mb-2">
+                    <Skeleton width={24} height={24} borderRadius={12} className="mr-3" />
+                    <View className="flex-1">
+                      <Skeleton width="70%" height={18} borderRadius={6} className="mb-1" />
+                      <Skeleton width={80} height={14} borderRadius={4} />
+                    </View>
+                    <Skeleton width={32} height={32} borderRadius={16} />
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Included Subjects Skeleton */}
+            <View className="mb-3">
+              <Skeleton width={150} height={20} borderRadius={6} className="mb-3" />
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonAccordion key={i} />
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* Checkout Bar Skeleton */}
+          <View className="absolute bottom-0 w-full bg-white border-t border-gray-100 p-5 pb-8 rounded-t-[30px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Skeleton width={100} height={14} borderRadius={6} className="mb-2" />
+                <View className="flex-row items-end">
+                  <Skeleton width={80} height={32} borderRadius={8} />
+                  <Skeleton width={40} height={18} borderRadius={6} className="ml-2 mb-1" />
+                </View>
+              </View>
+              <Skeleton width={140} height={48} borderRadius={16} />
+            </View>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (!pack) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F8F9FC]" edges={["bottom"]}>
+        <View className="flex-1 justify-center items-center p-5">
+          <Text className="text-4xl mb-4">📦</Text>
+          <Text className="text-xl font-bold text-gray-800 mb-2">Pack Not Found</Text>
+          <Text className="text-gray-500 text-center mb-6">
+            The pack you're looking for doesn't exist or has been removed.
+          </Text>
+          <TouchableOpacity 
+            className="bg-black py-3 px-6 rounded-full"
+            onPress={() => window.history.back()}
+          >
+            <Text className="text-white font-bold">Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <>
@@ -135,7 +265,7 @@ export default function Preview() {
             </Text>
 
             <Text className="text-gray-500 font-medium mt-1">
-              Contains {subjects.length} Subjects • {subjects.reduce((acc, s) => acc + s.sessions.length, 0)} PDFs
+              Contains {subjects.length} Subjects • {subjects.reduce((acc, s) => acc + (s.sessions?.length || 0), 0)} PDFs
             </Text>
           </View>
 
@@ -177,10 +307,11 @@ export default function Preview() {
 
           {subjects.map((subject, idx) => {
             const isExpanded = expandedSections.includes(idx);
+            const sessionCount = subject.sessions?.length || 0;
 
             return (
               <View
-                key={idx}
+                key={subject.id}
                 className="bg-white mb-4 rounded-3xl border border-gray-200 overflow-hidden shadow-sm"
               >
                 {/* Accordion Header */}
@@ -201,7 +332,7 @@ export default function Preview() {
                         {subject.title}
                       </Text>
                       <Text className="text-xs text-gray-400 font-medium">
-                        {subject.sessions.length} Papers available
+                        {sessionCount} Paper{sessionCount !== 1 ? 's' : ''} available
                       </Text>
                     </View>
                   </View>
@@ -220,7 +351,7 @@ export default function Preview() {
                 {isExpanded && (
                   <View className="relative">
                     <View className="p-2 opacity-50 bg-gray-50">
-                      {subject.sessions.map((session) => (
+                      {subject.sessions?.map((session: Session) => (
                         <View
                           key={session.id}
                           className="flex-row items-center py-3 px-3 border-b border-gray-100"
@@ -233,7 +364,7 @@ export default function Preview() {
                         </View>
                       ))}
 
-                      {subject.sessions.length === 0 && (
+                      {sessionCount === 0 && (
                         <Text className="text-gray-400 text-xs italic p-3">
                           No papers added yet…
                         </Text>
