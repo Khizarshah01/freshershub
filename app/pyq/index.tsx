@@ -1,3 +1,4 @@
+import { SkeletonCard } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { Link, Stack, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
@@ -143,9 +144,15 @@ export default function Marketplace() {
 
           {/* Show Loading State */}
           {loading && (
-            <Text className="text-center text-gray-500 py-6">
-              Loading packs...
-            </Text>
+           <>
+           <SkeletonCard />
+           <SkeletonCard />
+           <SkeletonCard />
+           <SkeletonCard />
+           <SkeletonCard />
+           <SkeletonCard />
+           <SkeletonCard />
+           </>
           )}
 
           {!loading &&
@@ -202,7 +209,7 @@ export default function Marketplace() {
 
           <View className="items-center mt-4">
             <Text className="text-gray-400 text-xs font-medium">
-              More semesters coming soon 🚀
+              More semesters coming soon
             </Text>
           </View>
         </ScrollView>

@@ -1,13 +1,13 @@
-import { Link, useRouter, type Href } from "expo-router";
-import idea from "../assets/images/idea.png";
-import rightArrow from "../assets/images/right-arrow.png";
-import test from "../assets/images/test.png";
-// 1. Added 'Image' to the imports below
+import { SkeletonCard } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/provider/AuthProvider";
+import { Link, useRouter, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import idea from "../assets/images/idea.png";
+import rightArrow from "../assets/images/right-arrow.png";
+import test from "../assets/images/test.png";
 
 // Defines the data structure for a Pack
 type Pack = {
@@ -178,7 +178,7 @@ async function fetchPacks() {
           </Link>
 
           {/* Card 2: Model Answers */}
-          <Link href={"/pyq?filter=answers" as Href} asChild>
+          <Link href={"/pyq?filter=model" as Href} asChild>
             <TouchableOpacity className="flex-1 bg-teal-600 p-5 rounded-[20px] h-44 justify-between shadow-teal-200 shadow-lg">
                <View className="bg-white/20 w-12 h-12 rounded-full items-center justify-center">
                 {/* 3. Added tintColor="white" if you want the icon to be white, otherwise remove it */}
@@ -206,7 +206,15 @@ async function fetchPacks() {
           </Link>
         </View>
         
-        <View className="pb-10">
+        {loadingPacks ? (
+          <>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          </>
+        ) : (
+          <View className="pb-10">
           {explorePacks.map((pack) => (
             <Link key={pack.id} href={`/pyq/${pack.id}/preview` as Href} asChild>
               <TouchableOpacity className="bg-white p-4 rounded-3xl mb-3 border border-gray-100 shadow-sm active:bg-gray-50">
@@ -250,7 +258,8 @@ async function fetchPacks() {
               </TouchableOpacity>
             </Link>
           ))}
-        </View>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>

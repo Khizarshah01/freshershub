@@ -2,9 +2,10 @@ import PickerSelect from "@/components/PickerSelect";
 import { BRANCHES, COLLEGES, COURSES, SEMESTERS } from "@/constants/data";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/provider/AuthProvider";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   Text,
@@ -41,67 +42,67 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
 
   // Load profile from Supabase "profiles" table
- // Update your useEffect to log errors
-useEffect(() => {
-  if (!user) return;
+  // Update your useEffect to log errors
+  useEffect(() => {
+    if (!user) return;
 
-  let mounted = true;
-  (async () => {
-    const { data, error: selectError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle<ProfileRow>();
-
-    if (!mounted) return;
-    
-    if (selectError) {
-      console.error('Error loading profile:', selectError);
-      return;
-    }
-
-    if (!data) {
-      console.log('No profile found, creating one...');
-      // create blank row
-      const { data: inserted, error: insertError } = await supabase
+    let mounted = true;
+    (async () => {
+      const { data, error: selectError } = await supabase
         .from("profiles")
-        .insert({ id: user.id })
         .select("*")
-        .single<ProfileRow>();
-        
-      if (insertError) {
-        console.error('Error creating profile:', insertError);
-        alert(`Failed to create profile: ${insertError.message}`);
+        .eq("id", user.id)
+        .maybeSingle<ProfileRow>();
+
+      if (!mounted) return;
+
+      if (selectError) {
+        console.error('Error loading profile:', selectError);
         return;
       }
-      
-      if (inserted && mounted) apply(inserted);
-    } else {
-      apply(data);
+
+      if (!data) {
+        console.log('No profile found, creating one...');
+        // create blank row
+        const { data: inserted, error: insertError } = await supabase
+          .from("profiles")
+          .insert({ id: user.id })
+          .select("*")
+          .single<ProfileRow>();
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+          alert(`Failed to create profile: ${insertError.message}`);
+          return;
+        }
+
+        if (inserted && mounted) apply(inserted);
+      } else {
+        apply(data);
+      }
+    })();
+
+    function apply(p: ProfileRow) {
+      setName(p.name ?? "Student");
+      setCourse(p.course ?? "B.Tech");
+      setBranch(p.branch ?? "CSE");
+      setSemester(p.semester ?? "Not set");
+      setCollege(p.college ?? "SSGMCE");
+      setCoins(p.coins ?? 0);
     }
-  })();
 
-  function apply(p: ProfileRow) {
-    setName(p.name ?? "Student");
-    setCourse(p.course ?? "B.Tech");
-    setBranch(p.branch ?? "CSE");
-    setSemester(p.semester ?? "Not set");
-    setCollege(p.college ?? "SSGMCE");
-    setCoins(p.coins ?? 0);
-  }
-
-  return () => { mounted = false; };
-}, [user]);
+    return () => { mounted = false; };
+  }, [user]);
 
   async function saveProfile() {
     if (!user) return;
-  
+
     setSaving(true);
-    
+
     console.log('Updating profile with:', {
       name, course, branch, semester, college
     });
-  
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -112,15 +113,15 @@ useEffect(() => {
         college,
       })
       .eq("id", user.id);
-  
+
     setSaving(false);
-  
+
     if (error) {
       console.error('Update error:', error);
       alert(error.message);
       return;
     }
-  
+
     console.log('Profile updated successfully!');
     setEditingProfile(false);
     setEditingSemester(false);
@@ -131,7 +132,7 @@ useEffect(() => {
     if (!user) return;
 
     setSaving(true);
-    
+
     const { error } = await supabase
       .from("profiles")
       .update({ semester })
@@ -200,22 +201,22 @@ useEffect(() => {
         {/* Account Settings */}
         <Text className="text-gray-900 font-bold text-base mb-3 ml-1">Account Settings</Text>
         <View className="bg-white rounded-3xl mb-6 border border-gray-100 shadow-sm overflow-hidden">
-          <MenuItem 
-            icon="✏️" 
-            label="Edit Profile" 
-            value={`${name}, ${course}, ${branch}`} 
-            onPress={() => setEditingProfile(true)} 
+          <MenuItem
+            icon={<MaterialIcons name="edit" size={20} color="black" />}
+            label="Edit Profile"
+            value={`${name}, ${course}, ${branch}`}
+            onPress={() => setEditingProfile(true)}
           />
-          <MenuItem 
-            icon="🎓" 
-            label="Change Semester" 
-            value={semester} 
-            onPress={() => setEditingSemester(true)} 
+          <MenuItem
+            icon={<MaterialIcons name="person-outline" size={20} color="black" />}
+            label="Change Semester"
+            value={semester}
+            onPress={() => setEditingSemester(true)}
           />
-          <MenuItem 
-            icon="📱" 
-            label="Phone Number" 
-            value={user?.phone ?? "N/A"} 
+          <MenuItem
+            icon = {<MaterialIcons name="phone-android" size={20} color="black" />}
+            label="Phone Number"
+            value={user?.phone ?? "N/A"}
           />
         </View>
 
@@ -223,7 +224,7 @@ useEffect(() => {
         {editingProfile && (
           <View className="bg-white rounded-3xl p-4 mb-6 border border-indigo-100 shadow-sm">
             <Text className="text-gray-900 font-bold text-base mb-3">Edit Profile</Text>
-            
+
             <Text className="text-xs text-gray-400 mb-1">Full Name</Text>
             <TextInput
               value={name}
@@ -284,7 +285,7 @@ useEffect(() => {
         {editingSemester && (
           <View className="bg-white rounded-3xl p-4 mb-6 border border-indigo-100 shadow-sm">
             <Text className="text-gray-900 font-bold text-base mb-3">Change Semester</Text>
-            
+
             <PickerSelect
               label="Semester"
               value={semester}
@@ -320,11 +321,11 @@ useEffect(() => {
         {/* App & Support */}
         <Text className="text-gray-900 font-bold text-base mb-3 ml-1">App & Support</Text>
         <View className="bg-white rounded-3xl overflow-hidden mb-8 border border-gray-100 shadow-sm">
-          <MenuItem icon="🛒" label="My Orders" />
-          <MenuItem icon="💬" label="Help & Support" />
-          <MenuItem icon="📄" label="Terms & Privacy" />
+          <MenuItem icon={<MaterialCommunityIcons name="cart-heart" size={20} color="black" />} label="My Orders" />
+          <MenuItem icon={<MaterialCommunityIcons name="message-cog-outline" size={20} color="black" />} label="Help & Support" />
+          <MenuItem icon={<MaterialCommunityIcons name="file-document-outline" size={20} color="black" />} label="Terms & Privacy" />
           <MenuItem
-            icon="🚪"
+            icon={<MaterialIcons name="logout" size={20} color="red" />}
             label="Log Out"
             isDestructive
             onPress={async () => {
@@ -347,14 +348,14 @@ useEffect(() => {
 }
 
 // Reusable Menu Item Component
-const MenuItem = ({ 
-  icon, 
-  label, 
-  value, 
-  isDestructive = false, 
-  onPress 
+const MenuItem = ({
+  icon,
+  label,
+  value,
+  isDestructive = false,
+  onPress
 }: {
-  icon: string;
+  icon: string | React.ReactNode;
   label: string;
   value?: string;
   isDestructive?: boolean;
@@ -365,7 +366,7 @@ const MenuItem = ({
     className="flex-row items-center p-4 border-b border-gray-50 active:bg-gray-50"
   >
     <View className="w-8 h-8 items-center mr-3 bg-gray-50 rounded-full justify-center">
-      <Text>{icon}</Text>
+      {typeof icon === "string" ? <Text>{icon}</Text> : icon}
     </View>
     <Text className={`flex-1 font-bold text-sm ${isDestructive ? "text-red-500" : "text-gray-700"}`}>
       {label}

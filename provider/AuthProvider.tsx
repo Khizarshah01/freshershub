@@ -14,17 +14,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Load existing session immediately
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null);
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_, session) => setUser(session?.user ?? null)
-    );
+    // Listen for login/logout changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // IMPORTANT: Do NOT render routes until loading is done
+  if (loading) {
+    return null; 
+    // Or return <SplashScreen />
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
