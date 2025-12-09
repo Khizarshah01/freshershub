@@ -1,6 +1,6 @@
 import { Skeleton, SkeletonAccordion, SkeletonHeader } from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
-import { Link, Stack, useLocalSearchParams, type Href } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   LayoutAnimation,
@@ -11,6 +11,7 @@ import {
   UIManager,
   View,
 } from "react-native";
+import RazorpayCheckout from 'react-native-razorpay';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Enable animations on Android
@@ -55,6 +56,7 @@ export default function Preview() {
   const [pack, setPack] = useState<Pack | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasPurchased, setHasPurchased] = useState(false);
 
   // Dummy syllabus (add DB later)
   const syllabus = [
@@ -64,9 +66,38 @@ export default function Preview() {
 
   useEffect(() => {
     if (id) {
+      // fetch pack & sessions
       fetchPackData();
+      // check whether current user already purchased
+      checkPurchase();
     }
   }, [id]);
+
+  async function checkPurchase() {
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) return;
+  
+      const { data: purchaseData, error } = await supabase
+        .from("purchases")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("pack_id", id)
+        .maybeSingle();
+  
+      if (error) {
+        console.log("checkPurchase error:", error);
+        return;
+      }
+  
+      setHasPurchased(!!purchaseData);
+    } catch (err) {
+      console.log("checkPurchase unexpected:", err);
+    }
+  }  
 
   async function fetchPackData() {
     setLoading(true);
@@ -117,7 +148,7 @@ export default function Preview() {
       if (sessionsError) {
         console.error("Error fetching sessions:", sessionsError);
       }
-  
+
       // 4️⃣ Attach sessions to subjects
       const subjectsWithSessions = subjectsData.map((subject: Subject) => ({
         ...subject,
@@ -134,6 +165,91 @@ export default function Preview() {
       setLoading(false);
     }
   }
+
+  async function startPayment() {
+    try {
+      if (!pack) return;
+  
+      const { data: order, error } = await supabase.functions.invoke("create-order", {
+        body: { amount: pack.price },
+      });
+  
+      if (error) {
+        console.log("Order creation error:", error);
+        return;
+      }
+  
+      const options = {
+        description: `Unlock Pack: ${pack.title}`,
+        currency: "INR",
+        key: "rzp_test_RpW8zhU8lfvFTS", // your test key
+        amount: order.amount,
+        name: "Exam Mate",
+        order_id: order.id,
+        theme: { color: "#000000" },
+      };
+  
+      RazorpayCheckout.open(options)
+        .then(async (payment: any) => {
+          console.log("Payment success:", payment);
+  
+          // Wait for DB insert and state change
+          await savePurchase(payment.razorpay_payment_id);
+  
+          // show success after DB saved (savePurchase will setHasPurchased)
+          alert("Payment Successful!");
+        })
+        .catch((err: any) => {
+          console.log("Payment failed:", err);
+          alert(`Payment failed: ${err?.description ?? err}`);
+        });
+    } catch (err) {
+      console.log("Error in startPayment:", err);
+    }
+  }
+  
+      
+          // ⭐ Save Purchase in DB
+          async function savePurchase(paymentId: string) {
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.log("No user for savePurchase");
+      return;
+    }
+    if (!pack) {
+      console.log("No pack for savePurchase");
+      return;
+    }
+
+    const { data, error } = await supabase.from("purchases").insert({
+      user_id: user.id,
+      pack_id: pack.id,
+      bought_for: "app",
+      payment_provider: "razorpay",
+      payment_ref: paymentId,
+    }).select().single();
+
+    if (error) {
+      console.log("DB insert error:", error);
+      return;
+    }
+
+    // success: mark purchased and refresh any data
+    setHasPurchased(true);
+
+    // optional: refresh pack/subjects if needed
+    // await fetchPackData();
+
+    // also re-check server to be extra safe
+    checkPurchase();
+  } catch (err) {
+    console.log("savePurchase unexpected:", err);
+  }
+}
 
   // Accordion state
   const [expandedSections, setExpandedSections] = useState<number[]>([]);
@@ -338,9 +454,9 @@ export default function Preview() {
                   </View>
 
                   <View className="items-end">
-                    <Text className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md mb-1">
+                  {!hasPurchased && (<Text className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md mb-1">
                       LOCKED
-                    </Text>
+                    </Text>)}
                     <Text className="text-gray-400 text-lg font-bold">
                       {isExpanded ? "▲" : "▼"}
                     </Text>
@@ -352,34 +468,36 @@ export default function Preview() {
                   <View className="relative">
                     <View className="p-2 opacity-50 bg-gray-50">
                       {subject.sessions?.map((session: Session) => (
-                        <View
-                          key={session.id}
-                          className="flex-row items-center py-3 px-3 border-b border-gray-100"
-                        >
-                          <Text className="text-lg mr-3">📄</Text>
-                          <Text className="text-gray-600 font-medium flex-1">
-                            {session.title}
-                          </Text>
-                          <Text className="text-xs text-gray-400">PDF</Text>
-                        </View>
+                     <TouchableOpacity
+                     key={session.id}
+                     onPress={() => {
+                       if (!hasPurchased) return startPayment();
+                       // navigate to content screen, pass sessionId as query and pack id in path
+                       router.push(
+                         `/pyq/${id}/content?sessionId=${encodeURIComponent(String(session.id))}`
+                       );
+                     }}
+                     className="flex-row items-center py-3 px-3 border-b border-gray-100"
+                   >
+                     <Text className="text-black font-medium flex-1">{session.title}</Text>
+                   </TouchableOpacity>                 
                       ))}
-
                       {sessionCount === 0 && (
-                        <Text className="text-gray-400 text-xs italic p-3">
+                        <Text className="text-gray-800 text-xs italic p-3">
                           No papers added yet…
                         </Text>
                       )}
                     </View>
 
-                    <Link href={`/pyq/${id}/payment` as Href} asChild>
-                      <TouchableOpacity className="absolute inset-0 bg-white/40 items-center justify-center backdrop-blur-sm">
+                    {!hasPurchased && (<TouchableOpacity className="absolute inset-0 bg-white/40 items-center justify-center backdrop-blur-sm"
+                   onPress={startPayment}
+                      >
                         <View className="bg-black px-6 py-3 rounded-full shadow-lg">
                           <Text className="text-white font-bold text-sm">
-                            🔒 Unlock to View
+                            Unlock to View
                           </Text>
                         </View>
-                      </TouchableOpacity>
-                    </Link>
+                      </TouchableOpacity>)}
                   </View>
                 )}
               </View>
@@ -387,32 +505,43 @@ export default function Preview() {
           })}
         </ScrollView>
 
-        {/* Checkout Bar */}
-        <View className="absolute bottom-0 w-full bg-white border-t border-gray-100 p-5 pb-8 rounded-t-[30px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-gray-400 text-xs font-bold uppercase mb-0.5">
-                Full Bundle Price
-              </Text>
-              <View className="flex-row items-end">
-                <Text className="text-3xl font-extrabold text-gray-900 leading-8">
-                  ₹{pack.price}
-                </Text>
-                <Text className="text-gray-400 text-sm line-through ml-2 mb-1">
-                  ₹99
-                </Text>
-              </View>
-            </View>
+      {/* Checkout Bar */}
+<View className="absolute bottom-0 w-full bg-white border-t border-gray-100 p-5 pb-8 rounded-t-[30px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+  <View className="flex-row items-center justify-between gap-x-4">
 
-            <Link href={`/pyq/${id}/payment` as Href} asChild>
-              <TouchableOpacity className="flex-[1.5] bg-gray-900 py-4 rounded-2xl shadow-xl flex-row justify-center items-center active:scale-95">
-                <Text className="text-white font-bold text-lg mr-2">
-                  Unlock All 🔓
-                </Text>
-              </TouchableOpacity>
-            </Link>
+    {/* LEFT PRICE BLOCK */}
+    <View className="flex-1">
+      <Text className="text-gray-400 text-xs font-bold uppercase mb-1">
+        Full Bundle Price
+      </Text>
+
+      <View className="flex-row items-end">
+        <Text className="text-3xl font-extrabold text-gray-900 leading-8">
+          ₹{pack.price}
+        </Text>
+
+        <Text className="text-gray-400 text-sm line-through ml-2 mb-1">
+          ₹99
+        </Text>
+      </View>
+    </View>
+
+    {/* UNLOCK BUTTON */}
+    {!hasPurchased && (
+          <View className="absolute bottom-0 w-full bg-white border-t p-5 rounded-t-[30px]">
+            <TouchableOpacity
+              className="bg-black py-4 rounded-2xl shadow-lg"
+              onPress={() => startPayment()}
+            >
+              <Text className="text-white text-center font-bold text-lg">
+                Unlock All 🔓 ₹{pack.price}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
+
+  </View>
+</View>
       </SafeAreaView>
     </>
   );
