@@ -42,6 +42,16 @@ export function SkeletonHeader() {
   );
 }
 
+export function SkeletonLibrary(){
+  return(
+    <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mb-4">
+    <View className="flex-1">
+      <Skeleton width="100%" height={100} borderRadius={12} className="mr-10" />
+    </View>
+  </View>
+  );
+}
+
 export function SkeletonCard() {
   return (
     <View className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mb-4">

@@ -16,7 +16,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/ExamMate.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
+        "backgroundImage": "./assets/images/ExamMate.png",
         "monochromeImage": "./assets/images/ExamMate.png"
       },
       "package": "com.exammate.app",

@@ -35,7 +35,7 @@ export default function Layout() {
             options={{ headerShown: false }}
           />
 
-<Stack.Screen
+          <Stack.Screen
             name="auth/verify" // or "index" depending on your filename
             options={{ headerShown: false }}
           />
