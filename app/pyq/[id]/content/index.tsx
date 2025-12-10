@@ -12,9 +12,9 @@ export default function ContentIndexScreen() {
   const [loading, setLoading] = useState(true);
   const [paper, setPaper] = useState<any>(null);
   const [allowed, setAllowed] = useState(false);
-  const [showRepeatList, setShowRepeatList] = useState(false);
-  const [openRepeatedIndex, setOpenRepeatedIndex] = useState<number | null>(null);
+  const [openRepeatedIndex, setOpenRepeatedIndex] = useState<string | null>(null);
   const [watermarkText, setWatermarkText] = useState("Exam Mate");
+
 
   useEffect(() => {
     if (packId && sessionId) init();
@@ -117,7 +117,13 @@ export default function ContentIndexScreen() {
           headerTitleStyle: { fontWeight: "800", fontSize: 18 },
         }}
       />
-      <ScrollView className="flex-1 bg-white px-5 py-6">
+      <ScrollView className="flex-1 bg-white"
+  contentContainerStyle={{ 
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 120,
+  }}>
+    <View className="w-full max-w-2xl self-center">
         {/* HEADER */}
         <Text className="text-center text-2xl font-extrabold text-red-700 tracking-wide mt-2">
           Sant Gadge Baba Amravati University
@@ -141,143 +147,142 @@ export default function ContentIndexScreen() {
         {/* UNITS */}
         {paper.units?.map((unit: any, i: number) => (
           <View key={i} className="mb-6">
-            <Text className="text-base text-center font-bold mb-3 text-red-600">
+            <Text className="text-2xl text-center font-bold mb-3 mt-8 text-red-600">
               Unit {unit.unit_no}: {unit.unit_title}
             </Text>
 
             {/* OPTIONS */}
             {unit.options?.map((opt: any, oi: number) => (
-              <View key={oi} className="mb-4 pl-2">
+              <View key={oi} className="pl-2">
                 {oi > 0 && (
-                  <Text className="italic text-red-700 text-center font-bold my-3">OR</Text>
+                  <Text className="italic text-red-500 text-center font-bold my-3">OR</Text>
                 )}
 
                 {/* QUESTIONS */}
-                {opt.questions?.map((q: any, qi: number) => (
-                  <View key={qi} className="mb-3">
-                    {/* Question Row */}
-                    <View className="flex-row justify-between">
-                      <Text className="text-[16px] text-gray-900 leading-6 flex-1 mr-2">
-                        <Text className="font-extrabold text-gray-800">
-                          {(() => {
-                            let qLabel;
-                            if (opt.questions.length === 1) {
-                              qLabel = `Q${opt.option_no})`;
-                            } else {
+                {opt.questions?.map((q: any, qi: number) => {
+                  const questionUniqueId = `${i}-${oi}-${qi}`;
+                  return (
+                    <View key={qi} className="mb-3">
+                      {/* Question Row */}
+                      <View className="flex-row justify-between">
+                        <Text className="text-[17px] text-gray-900 leading-6 flex-1 mr-2">
+                          <Text className="font-extrabold text-gray-800">
+                            {(() => {
+                              if (opt.questions.length === 1) return `Q${opt.option_no})`;
                               const letter = String.fromCharCode(97 + qi);
-                              qLabel = (qi === 0 ? `Q${opt.option_no}.${letter}` : letter) + ')';
-                            }
-                            return qLabel;
-                          })()}
-                        </Text>{" "}
-                        {q.question}
-                      </Text>
+                              return qi === 0 ? `Q${opt.option_no}.${letter}` : letter + ')';
+                            })()}
+                          </Text>{" "}
+                          {q.question}
+                        </Text>
 
-                      <Text className="text-gray-900 font-bold text-[16px] mt-1">({q.marks} marks)</Text>
-                    </View>
-
-                    {/* SUBQUESTIONS */}
-                    {q.subquestions?.length > 0 && (
-                      <View className="ml-6 mt-2">
-                        {q.subquestions.map((sub: any, si: number) => (
-                          <View key={si} className="flex-row justify-between mb-1">
-                            <Text className="text-[16px] text-gray-900 leading-6 flex-1 mr-2">
-                              <Text className="font-extrabold text-gray-800">
-                                {q.numberingType === "numeric" ? `${si + 1})` : `${toRoman(si + 1)})`}
-                              </Text>{" "}
-                              {sub.text}
-                            </Text>
-                            <Text className="text-gray-900 text-[12px] mt-1">({sub.marks} marks)</Text>
-                          </View>
-                        ))}
+                        <Text className="text-gray-900 font-bold text-[16px] mt-1">({q.marks} marks)</Text>
                       </View>
-                    )}
 
-                    <View className="flex-row flex-wrap items-start mt-2">
-                      {q.repeated_in?.length > 0 && (
-                        <View className="mt-1">
-                          <TouchableOpacity
-                            onPress={() =>
-                              setOpenRepeatedIndex(openRepeatedIndex === qi ? null : qi)
-                            }
-                            className="bg-yellow-100 px-3 py-1 rounded-full self-start flex-row items-center"
-                          >
-                            <Text className="text-[9px] text-yellow-800 font-semibold">
-                              Repeated {q.repeated_in.length} times
-                            </Text>
-
-                            <Text className="text-yellow-800 text-[10px] ml-1">
-                              {openRepeatedIndex === qi ? "▲" : "▼"}
-                            </Text>
-                          </TouchableOpacity>
-
-                          {/* SHOW LIST ONLY FOR THIS QUESTION */}
-                          {openRepeatedIndex === qi && (
-                            <View className="mt-1 ml-1 bg-yellow-50 p-2 rounded-lg border border-yellow-200">
-                              {q.repeated_in.map((yr: string, i: number) => (
-                                <Text
-                                  key={i}
-                                  className="text-[11px] text-yellow-900 mb-1"
-                                >
-                                  • Asked in {yr}
-                                </Text>
-                              ))}
+                      {/* SUBQUESTIONS */}
+                      {q.subquestions?.length > 0 && (
+                        <View className="ml-6 mt-2">
+                          {q.subquestions.map((sub: any, si: number) => (
+                            <View key={si} className="flex-row justify-between mb-1">
+                              <Text className="text-[16px] text-gray-900 leading-6 flex-1 mr-2">
+                                <Text className="font-extrabold text-gray-800">
+                                  {q.numberingType === "numeric" ? `${si + 1})` : `${toRoman(si + 1)})`}
+                                </Text>{" "}
+                                {sub.text}
+                              </Text>
+                              <Text className="text-gray-900 text-[12px] mt-1">({sub.marks} marks)</Text>
                             </View>
-                          )}
+                          ))}
                         </View>
                       )}
 
-                      {/* YouTube links */}
-                      {q.youtube_links?.length > 0 && (
-                        <View className="ml-1 mt-2 flex-row flex-wrap">
-
-                          {q.youtube_links.map((yt: any, yti: number) => (
+                      <View className="flex-row flex-wrap items-start mt-2">
+                        {q.repeated_in?.length > 0 && (
+                          <View className="mt-1">
                             <TouchableOpacity
-                              key={yti}
-                              onPress={() => Linking.openURL(yt.url)}
-                              className="flex-row items-center bg-red-100 px-3 py-1 rounded-full mr-2 mb-2"
+                              onPress={() => {
+                                setOpenRepeatedIndex(prev =>
+                                  prev === questionUniqueId ? null : questionUniqueId
+                                );
+                              }}
+                              className="bg-yellow-100 px-4 py-2 rounded-full flex-row items-center"
                             >
-                              {/* YouTube icon circle */}
-                              <AntDesign name="youtube" size={14} color="#e11d48" />
+                              <Text className="text-yellow-800 font-bold text-xs">
+                                Repeated {q.repeated_in.length}x
+                              </Text>
+                            </TouchableOpacity>
 
-                              {/* Title */}
-                              {/* <Text className="text-[9px] text-red-700 font-semibold">
+                            {/* SHOW LIST ONLY FOR THIS QUESTION */}
+                            {openRepeatedIndex === questionUniqueId && (
+                              <View className="mt-2 ml-4 bg-yellow-50 p-3 rounded-lg border border-yellow-300">
+                                {q.repeated_in.map((yr: string, idx: number) => (
+                                  <Text key={idx} className="text-yellow-900 text-sm mb-1">
+                                    • Asked in {yr}
+                                  </Text>
+                                ))}
+                              </View>
+                            )}
+                          </View>
+                        )}
+
+                        {/* YouTube links */}
+                        {q.youtube_links?.length > 0 && (
+                          <View className="ml-1 mt-2 flex-row flex-wrap">
+
+                            {q.youtube_links.map((yt: any, yti: number) => (
+                              <TouchableOpacity
+                                key={yti}
+                                onPress={() => Linking.openURL(yt.url)}
+                                className="flex-row items-center bg-red-100 px-3 py-1 rounded-full mr-2 mb-2"
+                              >
+                                {/* YouTube icon circle */}
+                                <AntDesign name="youtube" size={14} color="#e11d48" />
+
+                                {/* Title */}
+                                {/* <Text className="text-[9px] text-red-700 font-semibold">
                               {yt.title || "Watch explanation"}
                             </Text> */}
-                            </TouchableOpacity>
-                          ))}
+                              </TouchableOpacity>
+                            ))}
 
+                          </View>
+                        )}
+                      </View>
+                      {/* Images */}
+                      {q.images?.length > 0 && (
+                        <View className="ml-3 mt-2">
+                          {q.images.map((img: any, imi: number) => (
+                            <Image
+                              key={imi}
+                              source={{ uri: img.url }}
+                              className="w-40 h-40 border mb-2"
+                              resizeMode="contain"
+                            />
+                          ))}
                         </View>
                       )}
                     </View>
-                    {/* Images */}
-                    {q.images?.length > 0 && (
-                      <View className="ml-3 mt-2">
-                        {q.images.map((img: any, imi: number) => (
-                          <Image
-                            key={imi}
-                            source={{ uri: img.url }}
-                            className="w-40 h-40 border mb-2"
-                            resizeMode="contain"
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                ))}
+                  )
+                })}
               </View>
             ))}
+            <View className="absolute inset-x-0 top-1/2 -translate-y-1/2 items-center pointer-events-none -z-10">
+      <Text className="text-gray-400 text-7xl font-black opacity-15 -rotate-12 tracking-widest">
+        {watermarkText}
+      </Text>
+    </View>
           </View>
         ))}
-        <View className="absolute inset-0 items-center justify-center pointer-events-none">
+        {/* <View className="absolute inset-0 items-center justify-center pointer-events-none">
           <Text className="text-gray-400 text-7xl font-black opacity-10 -rotate-45 tracking-widest">
             {watermarkText}
           </Text>
-        </View>
-        <View className="absolute bottom-8 left-0 right-0 items-center pointer-events-none">
+        </View> */}
+        <View className="absolute bottom-1 left-0 right-0 items-center pointer-events-none">
           <Text className="text-gray-500 text-sm font-bold opacity-60">
             {watermarkText} • © Exam Mate 2025
           </Text>
+        </View>
         </View>
       </ScrollView>
     </>
